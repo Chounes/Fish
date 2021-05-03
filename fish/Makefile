@@ -1,28 +1,34 @@
 CC=gcc
-CFLAGS=-Wall -std=c99 -o2 -g
-LDFLAGS=-g
-TARGET=fish cmdline_test
+CFLAGS = -Wall -std=c99 -o2 -g
+LDFLAGS = -g
+TARGET1=fish
+TARGET2=cmdline_test
 
+all : $(TARGET1) $(TARGET2)
 
-all: $(TARGET)
+# target 1 fish
+$(TARGET1) : fish.o libcmdline.so
+	$(CC) $(LDFLAGS) -L${PWD} $< -Wl,-rpath=${PWD} -lcmdline -o $@
 
-fish: cmdline.so fish.o
-	$(CC) $(LDFLAGS) $^ -o $@
+# target 2 cmdtest
+$(TARGET2) :  cmdline_test.o libcmdline.so
+	$(CC) $(LDFLAGS) -L${PWD} $< -Wl,-rpath=${PWD} -lcmdline -o $@
 
-cmdline_test: cmdline.so cmdline_test.o
-	$(CC) $(LDFLAGS) $^ -o $@
+libcmdline.so : cmdline.o
+		$(CC) -shared $^ -o $@
 
-cmdline.so: cmdline.c cmdline.h
-	$(CC) $(CFLAGS) -fPIC -c -o $@ $<
+# library
+cmdline.o : cmdline.c cmdline.h
+	$(CC) $(CFLAGS) -fPIC -c $< -o $@
 
-cmdline_test.o: cmdline_test.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+cmdline_test.o : cmdline_test.c #cmdline.h
+	$(CC) $(CFLAGS) -c $< -o $@
 
-fish.o: fish.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+fish.o : fish.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-clean:
+clean :
 	rm -f *.o
 
-mrproper: clean
-	rm -f $(TARGET)
+mrproper : clean
+	rm -f $(TARGET1) $(TARGET2)
