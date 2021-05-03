@@ -6,19 +6,19 @@ TARGET=fish cmdline_test
 
 all: $(TARGET)
 
-fish: cmdline.o fish.o
+fish: cmdline.so fish.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
-cmdline_test: cmdline.o cmdline_test.o
+cmdline_test: cmdline.so cmdline_test.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
-cmdline.o: cmdline.c cmdline.h
+cmdline.so: cmdline.c cmdline.h
+	$(CC) $(CFLAGS) -fPIC -c -o $@ $<
+
+cmdline_test.o: cmdline_test.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-cmdline_test.o: cmdline_test.c 
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-fish.o: fish.c 
+fish.o: fish.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
