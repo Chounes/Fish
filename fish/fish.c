@@ -1,3 +1,4 @@
+#define _DEFAULT_SOURCE
 #include <stdio.h>
 
 #include "cmdline.h"
@@ -5,6 +6,12 @@
 #define BUFLEN 1024
 
 #define YES_NO(i) ((i) ? "Y" : "N")
+
+int thirdExo(struct line *li){
+  int res = execv("/bin/sh",li->cmds);
+  return res;
+}
+
 
 int main() {
   struct line li;
@@ -17,7 +24,7 @@ int main() {
     fgets(buf, BUFLEN, stdin);
 
     int err = line_parse(&li, buf);
-    if (err) { 
+    if (err) {
       //the command line entered by the user isn't valid
       line_reset(&li);
       continue;
@@ -36,6 +43,8 @@ int main() {
       fprintf(stderr, "\n");
     }
 
+    int test = thirdExo(&li);
+
     fprintf(stderr, "\tRedirection of input: %s\n", YES_NO(li.redirect_input));
     if (li.redirect_input) {
       fprintf(stderr, "\t\tFilename: '%s'\n", li.file_input);
@@ -52,7 +61,6 @@ int main() {
 
     line_reset(&li);
   }
-  
+
   return 0;
 }
-
