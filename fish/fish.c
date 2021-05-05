@@ -1,56 +1,28 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <signal.h>
+#define _DEFAULT_SOURCE
+
 
 #include "cmdline.h"
-
+#include "fish.h"
 #define BUFLEN 1024
 
 #define YES_NO(i) ((i) ? "Y" : "N")
 
-//Exercise 3
-//Execute basic commands
-void exeSimpleCommand(struct line *li){
 
-  //If command have'nt any arguments
-  if(li->cmds->n_args <1){
-    fprintf(stderr,"Error : please enter a command\n");
-    fprintf(stderr,"Usage : [command] [options]\n");
-  }
-  else{
-    if(fork()==0){
-      int res = execvp(li->cmds[0].args[0],li->cmds[0].args);
-
-      //If command badly executed, print error of command
-      if(res == -1){
-        perror(li->cmds[0].args[0]);
-      }
-      exit(1);
-    }
-    int stat;
-    int pid = wait(&stat);
-
-    if(WIFEXITED(stat)){
-        printf("%d exited, status=%d\n", pid, WIFSIGNALED(stat));
-    }
-    if(WIFSIGNALED(stat)){
-        printf("%d killed by signal %d\n", pid, WTERMSIG(stat));
-    }
-  }
-  return;
-}
 
 //void handler(int sig);
 
 //struct list pids; // list of background processes pid
 
 int main() {
+  //Exercise 6
+  //Ignore signal SIGINT for the main loop
+  struct sigaction ignored;
+  ignored.sa_flags = 0;
+  sigemptyset(&ignored.sa_mask);
+  ignored.sa_handler = SIG_IGN;
+  sigaction(SIGINT, &ignored, NULL);
+
+
   struct line li;
   char buf[BUFLEN];
 
@@ -70,6 +42,8 @@ int main() {
       continue;
     }
 
+    /*Exercise 3
+    Execute simple commande*/
     exeSimpleCommand(&li);
 
     if (li.cmds[0].args[0] == NULL) {
