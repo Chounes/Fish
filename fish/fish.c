@@ -46,11 +46,14 @@ int main() {
     Execute simple commande*/
     exeSimpleCommand(&li);
 
+
+    //potentiellement à enlever
     if (li.cmds[0].args[0] == NULL) {
       line_reset(&li);
       continue;
     }
 
+    //Exercise 4
     cmd_interne(li, chabsolu);
 
     fprintf(stderr, "Command line:\n");
