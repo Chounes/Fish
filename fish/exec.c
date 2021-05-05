@@ -11,16 +11,16 @@ void cmd_redirection(struct line li, int redirect){
         exit(EXIT_FAILURE);
     }
     if(fic == -1){
-        perror("cmdexec.c -> open/creat");
+        perror("exec.c -> open/creat");
         exit(EXIT_FAILURE);
     }
     if(dup2(fic, redirect) == -1){
-        perror("cmdexec.c -> dup2");
+        perror("exec.c -> dup2");
         exit(EXIT_FAILURE);
     }
 
     if(close(fic) == -1){
-        perror("cmdexex.c -> close");
+        perror("exec.c -> close");
         exit(EXIT_FAILURE);
     }
 }
