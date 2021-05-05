@@ -9,6 +9,7 @@
 #include <signal.h>
 
 #include "cmdline.h"
+#include "fish.h"
 
 #define BUFLEN 1024
 
