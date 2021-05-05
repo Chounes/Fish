@@ -22,7 +22,9 @@ void exeSimpleCommand(struct line *li){
   if(li->cmds->n_args <1){
     fprintf(stderr,"Error : please enter a command\n");
     fprintf(stderr,"Usage : [command] [options]\n");
+    return;
   }
+  else if(strcmp(li->cmds[0].args[0],"exit") == 0 || strcmp(li->cmds[0].args[0],"cd") == 0)return;
   else{
     if(fork()==0){
       int res = execvp(li->cmds[0].args[0],li->cmds[0].args);
@@ -46,6 +48,9 @@ void exeSimpleCommand(struct line *li){
   return;
 }
 
+//void handler(int sig);
+
+//struct list pids; // list of background processes pid
 
 int main() {
   struct line li;
@@ -53,9 +58,13 @@ int main() {
 
   line_init(&li);
 
+  char *chabsolu = getcwd(NULL, 0);
+  //int **pipes = NULL;
+
   for (;;) {
     printf("fish> ");
     fgets(buf, BUFLEN, stdin);
+
     int err = line_parse(&li, buf);
     if (err) {
       //the command line entered by the user isn't valid
@@ -64,6 +73,40 @@ int main() {
     }
 
     exeSimpleCommand(&li);
+
+    if (li.cmds[0].args[0] == NULL) {
+      line_reset(&li);
+      continue;
+    }
+
+    if (strcmp(li.cmds[0].args[0], "exit") == 0) {
+      line_reset(&li);
+      break;
+    } else if (strcmp(li.cmds[0].args[0], "cd") == 0) {
+      size_t len_dir = strlen("home") + strlen(getenv("USER")) + 1;
+      char dir[len_dir];
+      for (size_t i = 0; i < len_dir; ++i) {
+        dir[i] = '\0';
+      }
+      if (li.cmds[0].n_args < 2) {
+          strcpy(dir, "~");
+      } else {
+        strcpy(dir, li.cmds[0].args[1]);
+      }
+      if (strcmp(dir, "~") == 0) {
+        char *user = getenv("USER");
+        strcpy(dir, "/home/");
+        strcat(dir, user);
+      }
+      if (chdir(dir) == -1) {
+        perror("chdir");
+        fprintf(stderr, "failed to change directory to %s\n", dir);
+        line_reset(&li);
+        continue;
+      }
+      free(chabsolu);
+      chabsolu = getcwd(NULL, 0);
+    }
 
     fprintf(stderr, "Command line:\n");
     fprintf(stderr, "\tNumber of commands: %zu\n", li.n_cmds);
