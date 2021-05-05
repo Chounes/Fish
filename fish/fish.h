@@ -8,30 +8,51 @@
 #include <fcntl.h>
 #include <signal.h>
 
-void cmd_redirection(struct line li, int redirect){
-    int fic;
-    if(redirect == 0){
-        fic = open(li.file_input, O_RDONLY);
-    }else if (redirect == 1){
-        fic = creat(li.file_output, S_IRWXU | S_IRWXG | S_IRWXO);
-    }else{
-        fprintf(stderr, "wrong redirect value");
-        exit(EXIT_FAILURE);
-    }
-    if(fic == -1){
-        perror("exec.c -> open/creat");
-        exit(EXIT_FAILURE);
-    }
-    if(dup2(fic, redirect) == -1){
-        perror("exec.c -> dup2");
-        exit(EXIT_FAILURE);
-    }
+#define INPUT_REDIRECT 0
+#define OUTPUT_REDIRECT 1
 
-    if(close(fic) == -1){
-        perror("exec.c -> close");
-        exit(EXIT_FAILURE);
-    }
+//Handle input and output redirection. Return the new file descriptor if succeeded, -1 if not
+int cmd_redirection(const char *file, int type)
+{
+	//NULL file
+	if(!file)
+	{
+		fprintf(stderr, "Error : Cannot redirect to a NULL file.\n");
+		return -1 ;
+	}
+
+	printf("Redirecting %s to file '%s'.\n", (type == INPUT_REDIRECT) ? "input" : "output", file);
+
+	//Wrong type
+	if(type != INPUT_REDIRECT && type != OUTPUT_REDIRECT)
+	{
+		fprintf(stderr, "Error : wrong redirection type in source code.\n");
+		return -1 ;
+	}
+
+	//opening file
+	int flags = (type == INPUT_REDIRECT) ? O_RDONLY : (O_WRONLY | O_CREAT);
+	int fd = open(file, flags);
+	if(fd < 0)
+	{
+		fprintf(stderr, "Unable to open file '%s'\n",file);
+		return -1;
+	}
+
+	//Redirecting
+	int dup_fd = (type == INPUT_REDIRECT) ? STDIN_FILENO : STDOUT_FILENO;
+	if(dup2(fd, dup_fd) < 0)
+	{
+		fprintf(stderr, "Unable to redirect %s\n", (type == INPUT_REDIRECT) ? "input" : "output");
+		return -1;
+	}
+
+	close(fd);
+
+	return 0;
 }
+
+
 
 /*Exercise 3
 Execute basic commands*/
@@ -58,7 +79,22 @@ void exeSimpleCommand(struct line *li){
 
     //Execute command in sub process
     if(fork()==0){
-      int res = execvp(li->cmds[0].args[0],li->cmds[0].args);
+      int res;
+      //If redirection for input
+      if(li->redirect_input){
+        res = cmd_redirection(li->file_input, 0);
+        //res == -1 redirection failed
+        if(res == -1) exit(EXIT_FAILURE);
+      }
+
+      //If redirection for output
+      if(li->redirect_output){
+        res = cmd_redirection(li->file_output, 1);
+        //res == -1 redirection failed
+        if(res == -1) exit(EXIT_FAILURE);
+      }
+
+      res = execvp(li->cmds[0].args[0],li->cmds[0].args);
 
       //If command badly executed, print error of command
       if(res == -1){
