@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <signal.h>
 
+//Handle input and output redirection. Return the new file descriptor if succeeded, -1 if not
 int cmd_redirection(const char *file, int type)
 {
 	//NULL file
