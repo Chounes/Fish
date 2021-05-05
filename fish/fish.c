@@ -14,7 +14,6 @@
 
 #define YES_NO(i) ((i) ? "Y" : "N")
 
-
 //Exercise 3
 //Execute basic commands
 void exeSimpleCommand(struct line *li){
