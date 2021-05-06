@@ -11,6 +11,33 @@
 #define INPUT_REDIRECT 0
 #define OUTPUT_REDIRECT 1
 
+//PID is int therefor number max of fork == number of PID possible
+int bgPID[65536];
+
+
+
+void backgroundCommand(struct line *li){
+	int i =0;
+	while(i!=NULL){
+		++i;
+	}
+	if ((bgPID[i] = fork()) == 0){
+		int res;
+
+		res = execvp(li->cmds[0].args[0],li->cmds[0].args);
+
+		//If command badly executed, print error of command
+		if(res == -1){
+			perror(li->cmds[0].args[0]);
+		}
+		exit(1);
+	}
+	return;
+
+}
+
+
+
 //Handle input and output redirection. Return the new file descriptor if succeeded, -1 if not
 int cmd_redirection(const char *file, int type)
 {
@@ -67,6 +94,8 @@ void exeSimpleCommand(struct line *li){
   //Don't execute command if command start by "exit" or "cd"
   else if(strcmp(li->cmds[0].args[0],"exit") == 0 || strcmp(li->cmds[0].args[0],"cd") == 0);
 
+	//backgroundCommand
+	else if(li->background)backgroundCommand(li);
   else{
     /*Exercise 6
     Reset SIGINT to it default value just
