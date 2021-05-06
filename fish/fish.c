@@ -16,12 +16,18 @@
 int main() {
   //Exercise 6
   //Ignore signal SIGINT for the main loop
-  struct sigaction ignored;
+  /*struct sigaction ignored;
   ignored.sa_flags = 0;
   sigemptyset(&ignored.sa_mask);
   ignored.sa_handler = SIG_IGN;
-  sigaction(SIGINT, &ignored, NULL);
+  sigaction(SIGINT, &ignored, NULL);*/
 
+  struct sigaction ignored;
+	struct sigaction oldaction;//save the default action when SIGINT is received
+	sigemptyset(&ignored.sa_mask);
+	ignored.sa_handler = SIG_IGN;//ignoring SIGINT in main process
+	ignored.sa_flags = 0;
+	sigaction(SIGINT, &ignored, &oldaction);
 
   struct line li;
   char buf[BUFLEN];
@@ -46,39 +52,15 @@ int main() {
     Execute simple commande*/
     exeSimpleCommand(&li);
 
+
+    //potentiellement à enlever
     if (li.cmds[0].args[0] == NULL) {
       line_reset(&li);
       continue;
     }
 
-    if (strcmp(li.cmds[0].args[0], "exit") == 0) {
-      line_reset(&li);
-      break;
-    } else if (strcmp(li.cmds[0].args[0], "cd") == 0) {
-      size_t len_dir = strlen("home") + strlen(getenv("USER")) + 1;
-      char dir[len_dir];
-      for (size_t i = 0; i < len_dir; ++i) {
-        dir[i] = '\0';
-      }
-      if (li.cmds[0].n_args < 2) {
-          strcpy(dir, "~");
-      } else {
-        strcpy(dir, li.cmds[0].args[1]);
-      }
-      if (strcmp(dir, "~") == 0) {
-        char *user = getenv("USER");
-        strcpy(dir, "/home/");
-        strcat(dir, user);
-      }
-      if (chdir(dir) == -1) {
-        perror("chdir");
-        fprintf(stderr, "failed to change directory to %s\n", dir);
-        line_reset(&li);
-        continue;
-      }
-      free(chabsolu);
-      chabsolu = getcwd(NULL, 0);
-    }
+    //Exercise 4
+    cmd_interne(li, chabsolu);
 
     fprintf(stderr, "Command line:\n");
     fprintf(stderr, "\tNumber of commands: %zu\n", li.n_cmds);
