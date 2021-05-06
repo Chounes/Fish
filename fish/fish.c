@@ -27,7 +27,7 @@ int main() {
   ignored.sa_flags = 0;
   sigemptyset(&child.sa_mask);
   ignored.sa_handler = handSIG_CHILD;
-  sigaction(SIG_CHILD, &ignored, NULL);
+  sigaction(SIGCHLD, &ignored, NULL);
 
 
   struct line li;

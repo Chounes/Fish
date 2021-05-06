@@ -20,10 +20,10 @@ void handSIG_CHILD(int signal){
 
 	//Print pid of sub process and informations about it execution
 	if(WIFEXITED(stat)){
-			printf("%d exited, status=%d\n", pid, WIFSIGNALED(stat));
+			printf("\tBG : %d exited, status=%d\n", pid, WIFSIGNALED(stat));
 	}
 	if(WIFSIGNALED(stat)){
-			printf("%d killed by signal %d\n", pid, WTERMSIG(stat));
+			printf("\tBG : %d killed by signal %d\n", pid, WTERMSIG(stat));
 	}
 }
 
@@ -146,10 +146,10 @@ void exeSimpleCommand(struct line *li){
 
     //Print pid of sub process and informations about it execution
     if(WIFEXITED(stat)){
-        printf("%d exited, status=%d\n", pid, WIFSIGNALED(stat));
+        printf("\tFG : %d exited, status=%d\n", pid, WIFSIGNALED(stat));
     }
     if(WIFSIGNALED(stat)){
-        printf("%d killed by signal %d\n", pid, WTERMSIG(stat));
+        printf("\tFG : %d killed by signal %d\n", pid, WTERMSIG(stat));
     }
   }
 
