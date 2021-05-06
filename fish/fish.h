@@ -11,17 +11,24 @@
 #define INPUT_REDIRECT 0
 #define OUTPUT_REDIRECT 1
 
-//PID is int therefor number max of fork == number of PID possible
-int bgPID[65536];
+
+void handSIG_CHILD(int signal){
+	int stat;
+	//Wait end of sub process
+	int pid = wait(&stat);
 
 
+	//Print pid of sub process and informations about it execution
+	if(WIFEXITED(stat)){
+			printf("%d exited, status=%d\n", pid, WIFSIGNALED(stat));
+	}
+	if(WIFSIGNALED(stat)){
+			printf("%d killed by signal %d\n", pid, WTERMSIG(stat));
+	}
+}
 
 void backgroundCommand(struct line *li){
-	int i =0;
-	while(i!=NULL){
-		++i;
-	}
-	if ((bgPID[i] = fork()) == 0){
+	if (fork() == 0){
 		int res;
 
 		res = execvp(li->cmds[0].args[0],li->cmds[0].args);
@@ -30,6 +37,7 @@ void backgroundCommand(struct line *li){
 		if(res == -1){
 			perror(li->cmds[0].args[0]);
 		}
+
 		exit(1);
 	}
 	return;
@@ -94,7 +102,7 @@ void exeSimpleCommand(struct line *li){
   else if(strcmp(li->cmds[0].args[0],"exit") == 0 || strcmp(li->cmds[0].args[0],"cd") == 0);
 
 	//backgroundCommand
-	//else if(li->background)backgroundCommand(li);
+	else if(li->background)backgroundCommand(li);
   else{
 
     //Execute command in sub process
