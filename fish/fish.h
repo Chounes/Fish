@@ -80,7 +80,6 @@ int cmd_redirection(const char *file, int type)
 }
 
 
-
 /*Exercise 3
 Execute basic commands*/
 void exeSimpleCommand(struct line *li){
@@ -95,19 +94,20 @@ void exeSimpleCommand(struct line *li){
   else if(strcmp(li->cmds[0].args[0],"exit") == 0 || strcmp(li->cmds[0].args[0],"cd") == 0);
 
 	//backgroundCommand
-	else if(li->background)backgroundCommand(li);
+	//else if(li->background)backgroundCommand(li);
   else{
-    /*Exercise 6
-    Reset SIGINT to it default value just
-    for execution of command*/
-    struct sigaction dflt;
-    dflt.sa_flags = 0;
-    sigemptyset(&dflt.sa_mask);
-    dflt.sa_handler = SIG_DFL;
-    sigaction(SIGINT, &dflt, NULL);
 
     //Execute command in sub process
     if(fork()==0){
+			/*Exercise 6
+	    Reset SIGINT to it default value just
+	    for execution of command*/
+	    struct sigaction dflt;
+	    dflt.sa_flags = 0;
+	    sigemptyset(&dflt.sa_mask);
+	    dflt.sa_handler = SIG_DFL;
+	    sigaction(SIGINT, &dflt, NULL);
+
       int res;
       //If redirection for input
       if(li->redirect_input){
@@ -143,11 +143,6 @@ void exeSimpleCommand(struct line *li){
     if(WIFSIGNALED(stat)){
         printf("%d killed by signal %d\n", pid, WTERMSIG(stat));
     }
-
-    /*Exercise6
-    Re-ignore SIGINT for the main loop*/
-    dflt.sa_handler = SIG_IGN;
-    sigaction(SIGINT, &dflt, NULL);
   }
 
   return;
