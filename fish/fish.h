@@ -173,20 +173,61 @@ int cmd_interne(struct line li, char *chabsolu)
 }
 
 //Handle a command line with pipes
-void handle_one_pipe(struct line li, struct sigaction ignored, struct sigaction oldaction, char *chabsolu){
-	cmd_interne(li, chabsolu);
-
-	//Fork
-	int child_status;
-	pid_t child_pid = fork();
-
-	if (child_pid==0)
+void handle_with_pipes(struct line li, struct sigaction ignored, struct sigaction oldaction, char *chabsolu){
+	if(cmd_interne(li, chabsolu) != -1)
 	{
-		if (li.background == 0)
+		return ;
+	}
+
+	int pipes[li.n_cmds - 1][2];
+	for(size_t i=0; i<li.n_cmds; i++)
+	{
+		if(i != li.n_cmds - 1)
 		{
-			sigaction(SIGINT, &oldaction, NULL);
+			pipe(pipes[i]);
 		}
-		
+
+		if(fork() == 0)
+		{
+			if(i == 0)//first comand
+			{
+				//Output of process to input of first pipe
+				dup2(pipes[0][1],STDOUT_FILENO);
+			}
+			else if (i  == li.n_cmds - 1)//last command
+			{
+				//Output of last pipe to input of process
+				dup2(pipes[i-1][0],STDIN_FILENO);
+			}
+			else//others commands
+			{
+				//Output of previous pipe to input of process
+				dup2(pipes[i-1][0],STDIN_FILENO);
+				//Output of process to input of next pipe
+				dup2(pipes[i][1],STDOUT_FILENO);
+			}
+			
+			//closing pipe in child
+			close(pipes[i][1]);
+			close(pipes[i][0]);
+
+			/*------------------------------------------------
+								EXECUTION
+			------------------------------------------------*/
+			execvp(li.cmds[i].args[0],li.cmds[i].args);
+			fprintf(stderr,"Unknown command '%s'\n",li.cmds[i].args[0]);
+			exit(EXIT_FAILURE);
+		}
 	}
 	
+	for(size_t i=0; i<li.n_cmds-1; i++)//closing pipes in father
+	{
+		close(pipes[i][1]);
+		close(pipes[i][0]);
+	}
+	
+	for(size_t i=0; i<li.n_cmds; i++)//waiting for all commands
+	{
+		wait(NULL);
+	}
 }
