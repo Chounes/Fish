@@ -10,26 +10,6 @@
 
 #define INPUT_REDIRECT 0
 #define OUTPUT_REDIRECT 1
-#define MAX_FORK 200
-
-
-void handSIG_CHILD(int signal){
-	int stat;
-	int bg_pid;
-	//Wait end of sub process
-	bg_pid = wait(&stat);
-
-
-	//Print pid of sub process and informations about it execution
-	if(WIFEXITED(stat)){
-			printf("\tBG : %d exited, status=%d\n", bg_pid, WIFSIGNALED(stat));
-	}
-	if(WIFSIGNALED(stat)){
-			printf("\tBG : %d killed by signal %d\n", bg_pid, WTERMSIG(stat));
-	}
-	return;
-}
-
 
 
 
@@ -47,24 +27,6 @@ void handSIG_CHILD(int signal){
 			printf("\tBG : %d killed by signal %d\n", pid, WTERMSIG(stat));
 	}
 }
-
-void backgroundCommand(struct line *li){
-	if (fork() == 0){
-		int res;
-
-		res = execvp(li->cmds[0].args[0],li->cmds[0].args);
-
-		//If command badly executed, print error of command
-		if(res == -1){
-			perror(li->cmds[0].args[0]);
-		}
-
-		exit(1);
-	}
-	return;
-
-}
-
 
 
 //Handle input and output redirection. Return the new file descriptor if succeeded, -1 if not
@@ -220,12 +182,12 @@ void exeSimpleCommand(struct line *li){
   //Don't execute command if command start by "exit" or "cd"
   else if(strcmp(li->cmds[0].args[0],"exit") == 0 || strcmp(li->cmds[0].args[0],"cd") == 0);
 
-	//backgroundCommand
-	else if(li->background){
-		backgroundCommand(li);
-	}
+  //backgroundCommand
+  else if(li->background){
+     backgroundCommand(li);
+  }
   else{
-		foregroundCommand(li);
+     foregroundCommand(li);
   }
   return;
 }
