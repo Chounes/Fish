@@ -10,6 +10,27 @@
 
 #define INPUT_REDIRECT 0
 #define OUTPUT_REDIRECT 1
+#define MAX_FORK 200
+
+
+void handSIG_CHILD(int signal){
+	int stat;
+	int bg_pid;
+	//Wait end of sub process
+	bg_pid = wait(&stat);
+
+
+	//Print pid of sub process and informations about it execution
+	if(WIFEXITED(stat)){
+			printf("\tBG : %d exited, status=%d\n", bg_pid, WIFSIGNALED(stat));
+	}
+	if(WIFSIGNALED(stat)){
+			printf("\tBG : %d killed by signal %d\n", bg_pid, WTERMSIG(stat));
+	}
+	return;
+}
+
+
 
 //Handle input and output redirection. Return the new file descriptor if succeeded, -1 if not
 int cmd_redirection(const char *file, int type)
@@ -53,10 +74,107 @@ int cmd_redirection(const char *file, int type)
 }
 
 
+//Execute background commands
+void backgroundCommand(struct line *li){
+	//Exercise 7
+  //redirect signal for end of child to print status
+  struct sigaction child;
+  child.sa_flags = 0;
+  sigemptyset(&child.sa_mask);
+	child.sa_handler = handSIG_CHILD;
+	sigaction(SIGCHLD, &child, NULL);
+
+	if (fork() == 0){
+		int res;
+		//If redirection for input
+		if(li->redirect_input){
+			res = cmd_redirection(li->file_input, 0);
+			//res == -1 redirection failed
+			if(res == -1) exit(EXIT_FAILURE);
+		}
+
+		//If redirection for output
+		if(li->redirect_output){
+			res = cmd_redirection(li->file_output, 1);
+			//res == -1 redirection failed
+			if(res == -1) exit(EXIT_FAILURE);
+		}
+
+		res = execvp(li->cmds[0].args[0],li->cmds[0].args);
+
+		//If command badly executed, print error of command
+		if(res == -1){
+			perror(li->cmds[0].args[0]);
+		}
+		exit(EXIT_SUCCESS);
+	}
+	return;
+}
+
+
+//Execute foreground commands
+void foregroundCommand(struct line *li){
+	int fg_pid;
+	int stat;
+
+	//Execute command in sub process
+	if((fg_pid = fork())==0){
+		/*Exercise 6
+		Reset SIGINT to it default value just
+		for execution of command*/
+		struct sigaction dflt;
+		dflt.sa_flags = 0;
+		sigemptyset(&dflt.sa_mask);
+		dflt.sa_handler = SIG_DFL;
+		sigaction(SIGINT, &dflt, NULL);
+
+		int res;
+		//If redirection for input
+		if(li->redirect_input){
+			res = cmd_redirection(li->file_input, 0);
+			//res == -1 redirection failed
+			if(res == -1) exit(EXIT_FAILURE);
+		}
+
+		//If redirection for output
+		if(li->redirect_output){
+			res = cmd_redirection(li->file_output, 1);
+			//res == -1 redirection failed
+			if(res == -1) exit(EXIT_FAILURE);
+		}
+
+		res = execvp(li->cmds[0].args[0],li->cmds[0].args);
+
+		//If command badly executed, print error of command
+		if(res == -1){
+			perror(li->cmds[0].args[0]);
+		}
+		exit(EXIT_SUCCESS);
+	}
+	//Wait end of sub process
+	waitpid(fg_pid, &stat, 0);
+
+	//Print pid of sub process and informations about it execution
+	if(WIFEXITED(stat)){
+			printf("\tFG : %d exited, status=%d\n", fg_pid, WIFSIGNALED(stat));
+	}
+	if(WIFSIGNALED(stat)){
+			printf("\tFG : %d killed by signal %d\n", fg_pid, WTERMSIG(stat));
+	}
+	return;
+}
+
 
 /*Exercise 3
 Execute basic commands*/
 void exeSimpleCommand(struct line *li){
+
+  //reset signal of end of child to not wait background command in case of foreground command
+  struct sigaction child;
+  child.sa_flags = 0;
+  sigemptyset(&child.sa_mask);
+	child.sa_handler = SIG_IGN;
+	sigaction(SIGCHLD, &child, NULL);
 
   //If command have'nt any arguments
   if(li->cmds->n_args <1){
@@ -67,60 +185,13 @@ void exeSimpleCommand(struct line *li){
   //Don't execute command if command start by "exit" or "cd"
   else if(strcmp(li->cmds[0].args[0],"exit") == 0 || strcmp(li->cmds[0].args[0],"cd") == 0);
 
+	//backgroundCommand
+	else if(li->background){
+		backgroundCommand(li);
+	}
   else{
-    /*Exercise 6
-    Reset SIGINT to it default value just
-    for execution of command*/
-    struct sigaction dflt;
-    dflt.sa_flags = 0;
-    sigemptyset(&dflt.sa_mask);
-    dflt.sa_handler = SIG_DFL;
-    sigaction(SIGINT, &dflt, NULL);
-
-    //Execute command in sub process
-    if(fork()==0){
-      int res;
-      //If redirection for input
-      if(li->redirect_input){
-        res = cmd_redirection(li->file_input, 0);
-        //res == -1 redirection failed
-        if(res == -1) exit(EXIT_FAILURE);
-      }
-
-      //If redirection for output
-      if(li->redirect_output){
-        res = cmd_redirection(li->file_output, 1);
-        //res == -1 redirection failed
-        if(res == -1) exit(EXIT_FAILURE);
-      }
-
-      res = execvp(li->cmds[0].args[0],li->cmds[0].args);
-
-      //If command badly executed, print error of command
-      if(res == -1){
-        perror(li->cmds[0].args[0]);
-      }
-      exit(1);
-    }
-    int stat;
-    //Wait end of sub process
-    int pid = wait(&stat);
-
-
-    //Print pid of sub process and informations about it execution
-    if(WIFEXITED(stat)){
-        printf("%d exited, status=%d\n", pid, WIFSIGNALED(stat));
-    }
-    if(WIFSIGNALED(stat)){
-        printf("%d killed by signal %d\n", pid, WTERMSIG(stat));
-    }
-
-    /*Exercise6
-    Re-ignore SIGINT for the main loop*/
-    dflt.sa_handler = SIG_IGN;
-    sigaction(SIGINT, &dflt, NULL);
+		foregroundCommand(li);
   }
-
   return;
 }
 
