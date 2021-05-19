@@ -20,6 +20,13 @@ int main() {
   char reset_buf[] = "\n\0";
 
 
+  struct sigaction child;
+  ignored.sa_flags = 0;
+  sigemptyset(&child.sa_mask);
+  ignored.sa_handler = handSIG_CHILD;
+  sigaction(SIGCHLD, &ignored, NULL);
+
+
   struct line li;
   char buf[BUFLEN];
 

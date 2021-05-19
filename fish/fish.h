@@ -32,6 +32,41 @@ void handSIG_CHILD(int signal){
 
 
 
+
+void handSIG_CHILD(int signal){
+	int stat;
+	//Wait end of sub process
+	int pid = wait(&stat);
+
+
+	//Print pid of sub process and informations about it execution
+	if(WIFEXITED(stat)){
+			printf("\tBG : %d exited, status=%d\n", pid, WIFSIGNALED(stat));
+	}
+	if(WIFSIGNALED(stat)){
+			printf("\tBG : %d killed by signal %d\n", pid, WTERMSIG(stat));
+	}
+}
+
+void backgroundCommand(struct line *li){
+	if (fork() == 0){
+		int res;
+
+		res = execvp(li->cmds[0].args[0],li->cmds[0].args);
+
+		//If command badly executed, print error of command
+		if(res == -1){
+			perror(li->cmds[0].args[0]);
+		}
+
+		exit(1);
+	}
+	return;
+
+}
+
+
+
 //Handle input and output redirection. Return the new file descriptor if succeeded, -1 if not
 int cmd_redirection(const char *file, int type)
 {
