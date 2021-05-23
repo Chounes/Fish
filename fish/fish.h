@@ -110,6 +110,14 @@ void backgroundCommand(struct line *li, int numCommand){
 
 //Execute foreground commands
 void foregroundCommand(struct line *li){
+	//reset signal of end of child to not wait background command in case of foreground command
+  struct sigaction child;
+  child.sa_flags = 0;
+  sigemptyset(&child.sa_mask);
+	child.sa_handler = SIG_IGN;
+	sigaction(SIGCHLD, &child, NULL);
+	
+	
 	int fg_pid;
 	int stat;
 
@@ -164,13 +172,6 @@ void foregroundCommand(struct line *li){
 /*Exercise 3
 Execute basic commands*/
 void exeSimpleCommand(struct line *li){
-
-  //reset signal of end of child to not wait background command in case of foreground command
-  struct sigaction child;
-  child.sa_flags = 0;
-  sigemptyset(&child.sa_mask);
-	child.sa_handler = SIG_IGN;
-	sigaction(SIGCHLD, &child, NULL);
 
   //If command have'nt any arguments
   if(li->cmds->n_args <1){
