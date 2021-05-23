@@ -22,7 +22,7 @@ int main() {
 
   struct line li;
   char buf[BUFLEN];//Buffer
-	char wd[BUFLEN];//Workdir
+  char wd[BUFLEN];//Workdir
 
   line_init(&li);
 
