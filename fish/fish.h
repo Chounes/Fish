@@ -12,7 +12,6 @@
 #define OUTPUT_REDIRECT 1
 
 
-
 void handSIG_CHILD(int signal){
 	int stat;
 	//Wait end of sub process
@@ -72,7 +71,7 @@ int cmd_redirection(const char *file, int type)
 
 
 //Execute background commands
-void backgroundCommand(struct line *li){
+void backgroundCommand(struct line *li, int numCommand){
 	//Exercise 7
   //redirect signal for end of child to print status
   struct sigaction child;
@@ -97,11 +96,11 @@ void backgroundCommand(struct line *li){
 			if(res == -1) exit(EXIT_FAILURE);
 		}
 
-		res = execvp(li->cmds[0].args[0],li->cmds[0].args);
+		res = execvp(li->cmds[numCommand].args[0],li->cmds[numCommand].args);
 
 		//If command badly executed, print error of command
 		if(res == -1){
-			perror(li->cmds[0].args[0]);
+			perror(li->cmds[numCommand].args[0]);
 		}
 		exit(EXIT_SUCCESS);
 	}
@@ -184,7 +183,7 @@ void exeSimpleCommand(struct line *li){
 
   //backgroundCommand
   else if(li->background){
-     backgroundCommand(li);
+     backgroundCommand(li, 0);
   }
   else{
      foregroundCommand(li);
