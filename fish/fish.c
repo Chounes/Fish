@@ -71,7 +71,9 @@ int main() {
   }
 
   line_reset(&li);
-	return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
+	
+  //Ou return 0;
 }
 
 //  echo "Vivent les tubes." | tee f.txt | wc
