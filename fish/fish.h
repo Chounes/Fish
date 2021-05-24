@@ -11,12 +11,15 @@
 #define INPUT_REDIRECT 0
 #define OUTPUT_REDIRECT 1
 
+int nb_bg_subprocess =0;
+
 
 void handSIG_CHILD(int signal){
 	int stat;
 	//Wait end of sub process
 	int pid = wait(&stat);
 
+	--nb_bg_subprocess;
 
 	//Print pid of sub process and informations about it execution
 	if(WIFEXITED(stat)){
@@ -80,6 +83,8 @@ void backgroundCommand(struct line *li, int numCommand){
 	child.sa_handler = handSIG_CHILD;
 	sigaction(SIGCHLD, &child, NULL);
 
+
+	++nb_bg_subprocess;
 	if (fork() == 0){
 		int res;
 		//If redirection for input
@@ -116,8 +121,8 @@ void foregroundCommand(struct line *li){
   sigemptyset(&child.sa_mask);
 	child.sa_handler = SIG_IGN;
 	sigaction(SIGCHLD, &child, NULL);
-	
-	
+
+
 	int fg_pid;
 	int stat;
 
@@ -206,6 +211,7 @@ int cmd_interne(struct line li, char *chabsolu)
 	if(strcmp(li.cmds[0].args[0],"exit") == 0)
 	{
 		printf("exiting...\n");
+		while(nb_bg_subprocess >0){};
 		line_reset(&li);
 		exit(EXIT_SUCCESS);
 	}
