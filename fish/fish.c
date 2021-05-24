@@ -39,21 +39,21 @@ int main() {
     }
 
     //Void command line
-		if(li.n_cmds == 0)
-		{
-			continue ;
-		}
+    if(li.n_cmds == 0)
+    {
+	continue ;
+    }
 
     /*Exercise 3
     If commande entered*/
     if(li.n_cmds == 1)
-		{
-			exeSimpleCommand(&li);
-		}
-		else//command line with pipes
-		{
-			handle_with_pipes(li);
-		}
+    {
+	exeSimpleCommand(&li);
+    }
+    else//command line with pipes
+    {
+	handle_with_pipes(li);
+    }
 
     /*if (li.cmds[0].args[0] == NULL) {
       line_reset(&li);
