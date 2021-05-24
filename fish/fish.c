@@ -3,7 +3,7 @@
 
 #include "cmdline.h"
 #include "fish.h"
-#define BUFLEN 4096
+#define BUFLEN 2048
 
 #define YES_NO(i) ((i) ? "Y" : "N")
 
@@ -22,14 +22,13 @@ int main() {
 
   struct line li;
   char buf[BUFLEN];//Buffer
-  char wd[BUFLEN];//Workdir
 
   line_init(&li);
 
   //char *chabsolu = getcwd(NULL, 0);
 
   for (;;) {
-    printf("fish: %s> ",getcwd(wd,BUFLEN));
+    printf("fish> ");
     fgets(buf, BUFLEN, stdin);
 
     int err = line_parse(&li, buf);
@@ -39,18 +38,27 @@ int main() {
       continue;
     }
 
+    //Void command line
+		if(li.n_cmds == 0)
+		{
+			continue ;
+		}
+
     /*Exercise 3
     If commande entered*/
-    if(li.cmds->n_args != 0){
-      //Execute simple commande
-      //exeSimpleCommand(&li);
-      handle_with_pipes(li, ignored);
-    }
+    if(li.n_cmds == 1)
+		{
+			exeSimpleCommand(&li);
+		}
+		else//command line with pipes
+		{
+			handle_with_pipes(li);
+		}
 
-    if (li.cmds[0].args[0] == NULL) {
+    /*if (li.cmds[0].args[0] == NULL) {
       line_reset(&li);
       continue;
-    }
+    }*/
 
     cmd_interne(li);
 
@@ -62,5 +70,8 @@ int main() {
 
   }
 
-  return 0;
+  line_reset(&li);
+	return EXIT_SUCCESS;
 }
+
+//  echo "Vivent les tubes." | tee f.txt | wc
