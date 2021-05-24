@@ -235,67 +235,74 @@ int cmd_interne(struct line li)
 }
 
 //Handle a command line with pipes
-void handle_with_pipes(struct line li, struct sigaction ignored, int numCommand){
-	struct sigaction child;
-	child.sa_flags = 0;
-	sigemptyset(&child.sa_mask);
-	child.sa_handler = SIG_IGN;
-	sigaction(SIGCHLD, &child, NULL);
-	
-	if(cmd_interne(li) != -1)
-	{
-		return ;
+void handle_with_pipes(struct line li){
+	int pipes[li.n_cmds-1][2];
+	int status;
+	int res;
+	for(int i=0;i<li.n_cmds;i++){
+		res=pipe(pipes[i]);
 	}
-
-	int pipes[li.n_cmds - 1][2];
-	for(size_t i=0; i<li.n_cmds; i++)
-	{
-		if(i != li.n_cmds - 1)
-		{
-			pipe(pipes[i]);
+	pid_t pid=fork();
+	
+	if(pid==0){
+		//If redirection for input
+		if (li.redirect_input) {
+			cmd_redirection(li.file_input, 0);
+			//res == -1 redirection failed
+			if(res == -1) exit(EXIT_FAILURE);
 		}
-
-		if(fork() == 0)
-		{
-			if(i == 0)//first command
-			{
-				//Output of process to input of first pipe
-				dup2(pipes[0][1],STDOUT_FILENO);
+		//If redirection for output
+		else{
+			if(li.background){
+				cmd_redirection("/dev/null", 1);
+				//res == -1 redirection failed
+				if(res == -1) exit(EXIT_FAILURE);
 			}
-			else if (i  == li.n_cmds - 1)//last command
-			{
-				//Output of last pipe to input of process
-				dup2(pipes[i-1][0],STDIN_FILENO);
-			}
-			else//others commands
-			{
-				//Output of previous pipe to input of process
-				dup2(pipes[i-1][0],STDIN_FILENO);
-				//Output of process to input of next pipe
-				dup2(pipes[i][1],STDOUT_FILENO);
-			}
-			
-			//closing pipe in child
-			close(pipes[i][1]);
-			close(pipes[i][0]);
-
-			/*------------------------------------------------
-								EXECUTION
-			------------------------------------------------*/
-			execvp(li.cmds[numCommand].args[0],li.cmds[numCommand].args);
-			fprintf(stderr,"Unknown command '%s'\n",li.cmds[numCommand].args[0]);
-			exit(EXIT_FAILURE);
 		}
+		//Output of process to input of first pipe
+		res=dup2(pipes[0][1],1);
+		//closing pipe in child
+		res=close(pipes[0][1]);
+		res=close(pipes[0][0]);
+		res = execvp(li.cmds[0].args[0], li.cmds[0].args);
+		exit(1);
 	}
-	
-	for(size_t i=0; i<li.n_cmds-1; i++)//closing pipes in father
-	{
-		close(pipes[i][1]);
-		close(pipes[i][0]);
+
+	//closing pipe in child
+	res=close(pipes[0][1]);
+
+	for(int i=1;i<li.n_cmds-1;i++){
+		pid=fork();
+		if(pid==0){
+			//Output of previous pipe to input of process
+			res=dup2(pipes[i-1][0],0);
+			res=close(pipes[i-1][0]);
+			//Output of process to input of next pipe
+			res=dup2(pipes[i][1],1);
+			res=close(pipes[i][1]);
+			res=execvp(li.cmds[i].args[0], li.cmds[i].args);
+			exit(1);
+		}
+		//closing pipes in father
+		res=close(pipes[i-1][0]);
+		res=close(pipes[i][1]);
+		
 	}
-	
-	for(size_t i=0; i<li.n_cmds; i++)//waiting for all commands
-	{
-		wait(NULL);
+
+	pid=fork();
+	if(pid==0){
+		res=dup2(pipes[li.n_cmds-2][0],0);
+		res=close(pipes[li.n_cmds-2][0]);
+		res = execvp(li.cmds[li.n_cmds-1].args[0], li.cmds[li.n_cmds-1].args);
+		exit(1);
 	}
+
+	//waiting for all commands
+	res=close(pipes[li.n_cmds-2][0]);
+	for(int i=0;i<li.n_cmds;i++){
+		res=wait(&status);
+	}
+	return status;
 }
+
+// echo "Vivent les pipes." | tee f.txt | wc
