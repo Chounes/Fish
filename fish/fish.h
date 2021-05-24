@@ -235,7 +235,7 @@ int cmd_interne(struct line li)
 }
 
 //Handle a command line with pipes
-void handle_with_pipes(struct line li, struct sigaction ignored){
+void handle_with_pipes(struct line li, struct sigaction ignored, int numCommand){
 	struct sigaction child;
 	child.sa_flags = 0;
 	sigemptyset(&child.sa_mask);
@@ -257,7 +257,7 @@ void handle_with_pipes(struct line li, struct sigaction ignored){
 
 		if(fork() == 0)
 		{
-			if(i == 0)//first comand
+			if(i == 0)//first command
 			{
 				//Output of process to input of first pipe
 				dup2(pipes[0][1],STDOUT_FILENO);
@@ -282,8 +282,8 @@ void handle_with_pipes(struct line li, struct sigaction ignored){
 			/*------------------------------------------------
 								EXECUTION
 			------------------------------------------------*/
-			execvp(li.cmds[i].args[0],li.cmds[i].args);
-			fprintf(stderr,"Unknown command '%s'\n",li.cmds[i].args[0]);
+			execvp(li.cmds[numCommand].args[0],li.cmds[numCommand].args);
+			fprintf(stderr,"Unknown command '%s'\n",li.cmds[numCommand].args[0]);
 			exit(EXIT_FAILURE);
 		}
 	}
