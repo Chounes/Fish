@@ -23,10 +23,10 @@ void handSIG_CHILD(int signal){
 
 	//Print pid of sub process and informations about it execution
 	if(WIFEXITED(stat)){
-			printf("\tBG : %d exited, status=%d\n", pid, WIFSIGNALED(stat));
+			fprintf(stderr,"\tBG : %d exited, status=%d\n", pid, WIFSIGNALED(stat));
 	}
 	if(WIFSIGNALED(stat)){
-			printf("\tBG : %d killed by signal %d\n", pid, WTERMSIG(stat));
+			fprintf(stderr,"\tBG : %d killed by signal %d\n", pid, WTERMSIG(stat));
 	}
 }
 
@@ -165,12 +165,128 @@ void foregroundCommand(struct line *li){
 
 	//Print pid of sub process and informations about it execution
 	if(WIFEXITED(stat)){
-			printf("\tFG : %d exited, status=%d\n", fg_pid, WIFSIGNALED(stat));
+			fprintf(stderr,"\tFG : %d exited, status=%d\n", fg_pid, WIFSIGNALED(stat));
 	}
 	if(WIFSIGNALED(stat)){
-			printf("\tFG : %d killed by signal %d\n", fg_pid, WTERMSIG(stat));
+			fprintf(stderr,"\tFG : %d killed by signal %d\n", fg_pid, WTERMSIG(stat));
 	}
 	return;
+}
+
+
+
+//Handle internal commands like cd or exit. Return 1 if an internal command other than exit has been executed, -1 if more than 1 commands, 0 if no internal commands.
+int cmd_interne(struct line* li, char *chabsolu)
+{
+	if(li->n_cmds > 1)
+	{
+		return -1;
+	}
+
+	//exit command
+	if(strcmp(li->cmds[0].args[0],"exit") == 0)
+	{
+		printf("exiting...\n");
+		while(nb_bg_subprocess >0){};
+		line_reset(li);
+		exit(EXIT_SUCCESS);
+	}
+
+	//cd command
+	if(strcmp(li->cmds[0].args[0],"cd") == 0)
+	{
+		size_t len_dir = strlen("home") + strlen(getenv("USER")) + 1;
+		char dir[len_dir];
+		for (size_t i = 0; i < len_dir; ++i) {
+			dir[i] = '\0';
+		}
+		if (li->cmds[0].n_args < 2) {
+		  	strcpy(dir, "~");
+		} else {
+			strcpy(dir, li->cmds[0].args[1]);
+		}
+		if (strcmp(dir, "~") == 0) {
+			char *user = getenv("USER");
+			strcpy(dir, "/home/");
+			strcat(dir, user);
+		}
+		if (chdir(dir) == -1) {
+			perror("chdir");
+			fprintf(stderr, "failed to change directory to %s\n", dir);
+			line_reset(li);
+		}
+		chabsolu = getcwd(NULL, 0);
+		return 1;
+	}
+
+	return 0;
+}
+
+
+//Handle a command line with pipes
+void handle_with_pipes(struct line* li,int numCommand){
+	struct sigaction child;
+	child.sa_flags = 0;
+	sigemptyset(&child.sa_mask);
+	child.sa_handler = SIG_IGN;
+	sigaction(SIGCHLD, &child, NULL);
+
+	if(cmd_interne(li,getcwd(NULL, 0)) != -1)
+	{
+		return ;
+	}
+
+	int pipes[li->n_cmds - 1][2];
+	for(size_t i=0; i<li->n_cmds; i++)
+	{
+		if(i != li->n_cmds - 1)
+		{
+			pipe(pipes[i]);
+		}
+
+		if(fork() == 0)
+		{
+			if(i == 0)//first command
+			{
+				//Output of process to input of first pipe
+				dup2(pipes[0][1],STDOUT_FILENO);
+			}
+			else if (i  == li->n_cmds - 1)//last command
+			{
+				//Output of last pipe to input of process
+				dup2(pipes[i-1][0],STDIN_FILENO);
+			}
+			else//others commands
+			{
+				//Output of previous pipe to input of process
+				dup2(pipes[i-1][0],STDIN_FILENO);
+				//Output of process to input of next pipe
+				dup2(pipes[i][1],STDOUT_FILENO);
+			}
+
+			//closing pipe in child
+			close(pipes[i][1]);
+			close(pipes[i][0]);
+
+			/*------------------------------------------------
+								EXECUTION
+			------------------------------------------------*/
+			execvp(li->cmds[numCommand].args[0],li->cmds[numCommand].args);
+			fprintf(stderr,"Unknown command '%s'\n",li->cmds[numCommand].args[0]);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	for(size_t i=0; i<li->n_cmds-1; i++)//closing pipes in father
+	{
+		close(pipes[i][1]);
+		close(pipes[i][0]);
+	}
+
+	for(size_t i=0; i<li->n_cmds; i++)//waiting for all commands
+	{
+		wait(NULL);
+	}
 }
 
 
@@ -187,61 +303,17 @@ void exeSimpleCommand(struct line *li){
   //Don't execute command if command start by "exit" or "cd"
   else if(strcmp(li->cmds[0].args[0],"exit") == 0 || strcmp(li->cmds[0].args[0],"cd") == 0);
 
-  //backgroundCommand
+	//exe commande with pipe
+	else if(li->n_cmds > 1){
+		handle_with_pipes(li,0);
+	}
+  //exe background command
   else if(li->background){
      backgroundCommand(li, 0);
   }
+	//exe normal command
   else{
      foregroundCommand(li);
   }
   return;
-}
-
-
-
-//Handle internal commands like cd or exit. Return 1 if an internal command other than exit has been executed, -1 if more than 1 commands, 0 if no internal commands.
-int cmd_interne(struct line li, char *chabsolu)
-{
-	if(li.n_cmds > 1)
-	{
-		return -1;
-	}
-
-	//exit command
-	if(strcmp(li.cmds[0].args[0],"exit") == 0)
-	{
-		printf("exiting...\n");
-		while(nb_bg_subprocess >0){};
-		line_reset(&li);
-		exit(EXIT_SUCCESS);
-	}
-
-	//cd command
-	if(strcmp(li.cmds[0].args[0],"cd") == 0)
-	{
-		size_t len_dir = strlen("home") + strlen(getenv("USER")) + 1;
-		char dir[len_dir];
-		for (size_t i = 0; i < len_dir; ++i) {
-			dir[i] = '\0';
-		}
-		if (li.cmds[0].n_args < 2) {
-		  	strcpy(dir, "~");
-		} else {
-			strcpy(dir, li.cmds[0].args[1]);
-		}
-		if (strcmp(dir, "~") == 0) {
-			char *user = getenv("USER");
-			strcpy(dir, "/home/");
-			strcat(dir, user);
-		}
-		if (chdir(dir) == -1) {
-			perror("chdir");
-			fprintf(stderr, "failed to change directory to %s\n", dir);
-			line_reset(&li);
-		}
-		chabsolu = getcwd(NULL, 0);
-		return 1;
-	}
-
-	return 0;
 }

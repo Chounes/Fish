@@ -51,7 +51,7 @@ int main() {
       continue;
     }
 
-    cmd_interne(li, chabsolu);
+    cmd_interne(&li, chabsolu);
 
     if(li.background){
       strcpy(buf,reset_buf);
