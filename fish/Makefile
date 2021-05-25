@@ -21,11 +21,11 @@ libcmdline.so : cmdline.o
 cmdline.o : cmdline.c cmdline.h
 	$(CC) $(CFLAGS) -fPIC -c $< -o $@
 
-cmdline_test.o : cmdline_test.c
+cmdline_test.o : cmdline_test.c cmdline.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 fish.o : fish.c fish.h
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -D_DEFAULT_SOURCE -c $< -o $@
 
 clean :
 	rm -f *.o
