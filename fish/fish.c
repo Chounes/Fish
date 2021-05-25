@@ -1,6 +1,3 @@
-#define _DEFAULT_SOURCE
-
-
 #include "cmdline.h"
 #include "fish.h"
 #define BUFLEN 1024
@@ -25,8 +22,6 @@ int main() {
 
   line_init(&li);
 
-  char *chabsolu = getcwd(NULL, 0);
-  //int **pipes = NULL;
 
   for (;;) {
     printf("fish> ");
@@ -42,16 +37,16 @@ int main() {
     /*Exercise 3
     If commande entered*/
     if(li.cmds->n_args != 0){
-      //Execute simple commande
-      exeSimpleCommand(&li);
+      //Execute commande
+      exeCommand(&li);
     }
 
-    if (li.cmds[0].args[0] == NULL) {
+    if (li.n_cmds == 0) {
       line_reset(&li);
       continue;
     }
 
-    cmd_interne(&li, chabsolu);
+    cmd_interne(li);
 
     if(li.background){
       strcpy(buf,reset_buf);
