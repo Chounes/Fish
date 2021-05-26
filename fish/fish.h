@@ -203,6 +203,7 @@ void cmd_interne(struct line *li)
 	{
 		//start with home directory
 		size_t len_dir = strlen("home") + strlen(getenv("USER")) + 1;
+
 		char dir[len_dir];
 		for (size_t i = 0; i < len_dir; ++i) {
 		dir[i] = '\0';
