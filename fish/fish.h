@@ -173,32 +173,40 @@ void foregroundCommand(struct line *li){
 void cmd_interne(struct line li)
 {
 	//exit command
+	//Check if it is an internal command (using strcmp)
 	if(strcmp(li.cmds[0].args[0],"exit") == 0)
 	{
 		printf("exiting...\n");
+		//Wait for subprocess to end before exiting
 		while(nb_bg_subprocess >0){};
 		line_reset(&li);
 		exit(EXIT_SUCCESS);
 	}
 
 	//cd command
+	//Check if it is an internal command (using strcmp)
 	if(strcmp(li.cmds[0].args[0],"cd") == 0)
 	{
+		//start with home directory
 		size_t len_dir = strlen("home") + strlen(getenv("USER")) + 1;
+		
 		char dir[len_dir];
 		for (size_t i = 0; i < len_dir; ++i) {
 			dir[i] = '\0';
 		}
+		//Check arguments number
 		if (li.cmds[0].n_args < 2) {
 		  	strcpy(dir, "~");
 		} else {
 			strcpy(dir, li.cmds[0].args[1]);
 		}
+		//Check if ~ is used (using strcmp)
 		if (strcmp(dir, "~") == 0) {
 			char *user = getenv("USER");
 			strcpy(dir, "/home/");
 			strcat(dir, user);
 		}
+		//Error if the change of the directory failed
 		if (chdir(dir) == -1) {
 			perror("chdir");
 			fprintf(stderr, "failed to change directory to %s\n", dir);
