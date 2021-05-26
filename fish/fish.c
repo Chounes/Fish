@@ -34,20 +34,20 @@ int main() {
       continue;
     }
 
-    /*Exercise 3
-    If commande entered*/
-    if(li.cmds->n_args != 0){
+    //Check if there is command
+    if(li.n_cmds != 0){
       //Execute commande
       exeCommand(&li);
     }
 
-    if (li.n_cmds == 0) {
+    if(li.n_cmds == 0){
+      //reset line
       line_reset(&li);
       continue;
     }
 
-    cmd_interne(li);
-
+    /*If background command reset buffer to avoid
+      infinity loop*/
     if(li.background){
       strcpy(buf,reset_buf);
     }

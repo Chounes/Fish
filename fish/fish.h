@@ -11,14 +11,17 @@
 #define INPUT_REDIRECT 0
 #define OUTPUT_REDIRECT 1
 
+//Number of subprocess not completed
 int nb_bg_subprocess =0;
 
-
+//Exercise 7
+//Use SIGCHLD to know when sub processe finish and print it satus
 void handSIG_CHILD(int signal){
 	int stat;
 	//Wait end of sub process
 	int pid = wait(&stat);
 
+	//decrements by 1 the non-terminated sub-process because this one has just ended
 	--nb_bg_subprocess;
 
 	//Print pid of sub process and informations about it execution
@@ -71,6 +74,7 @@ int cmd_redirection(const char *file, int type)
 	return 0;
 }
 
+//Exercise 7
 //Execute background commands
 void backgroundCommand(struct line *li, int numCommand){
 	//Exercise 7
@@ -81,9 +85,9 @@ void backgroundCommand(struct line *li, int numCommand){
 	child.sa_handler = handSIG_CHILD;
 	sigaction(SIGCHLD, &child, NULL);
 
+	int verif_fork;
 
-	++nb_bg_subprocess;
-	if (fork() == 0){
+	if ((verif_fork=fork()) == 0){
 		int res;
 		//If redirection for input
 		if(li->redirect_input){
@@ -107,9 +111,18 @@ void backgroundCommand(struct line *li, int numCommand){
 		}
 		exit(EXIT_SUCCESS);
 	}
+
+	//Check if sub-process was greatly created
+	if(verif_fork !=-1){
+		//Increment by 1 the unfinished sub-process because we have just added 1
+		++nb_bg_subprocess;
+	}
+
 	return;
 }
 
+
+//Exiercise 3
 //Execute foreground commands
 void foregroundCommand(struct line *li){
 	//reset signal of end of child to not wait background command in case of foreground command
@@ -169,117 +182,125 @@ void foregroundCommand(struct line *li){
 	return;
 }
 
+
 //Handle internal commands like cd or exit. Return 1 if an internal command other than exit has been executed, -1 if more than 1 commands, 0 if no internal commands.
-void cmd_interne(struct line li)
+void cmd_interne(struct line *li)
 {
 	//exit command
-	if(strcmp(li.cmds[0].args[0],"exit") == 0)
+	//Check if it is an internal command (using strcmp)
+	if(strcmp(li->cmds[0].args[0],"exit") == 0)
 	{
 		printf("exiting...\n");
+		//Wait for subprocess to end before exiting
 		while(nb_bg_subprocess >0){};
-		line_reset(&li);
+		line_reset(li);
 		exit(EXIT_SUCCESS);
 	}
 
 	//cd command
-	if(strcmp(li.cmds[0].args[0],"cd") == 0)
+	//Check if it is an internal command (using strcmp)
+	if(strcmp(li->cmds[0].args[0],"cd") == 0)
 	{
+		//start with home directory
 		size_t len_dir = strlen("home") + strlen(getenv("USER")) + 1;
 		char dir[len_dir];
 		for (size_t i = 0; i < len_dir; ++i) {
-			dir[i] = '\0';
-		}
-		if (li.cmds[0].n_args < 2) {
-		  	strcpy(dir, "~");
+		dir[i] = '\0';
+	}
+	//Check arguments number
+		if (li->cmds[0].n_args < 2) {
+	  	strcpy(dir, "~");
 		} else {
-			strcpy(dir, li.cmds[0].args[1]);
+			strcpy(dir, li->cmds[0].args[1]);
 		}
-		if (strcmp(dir, "~") == 0) {
+		//Check if ~ is used (using strcmp)
+	if (strcmp(dir, "~") == 0) {
 			char *user = getenv("USER");
 			strcpy(dir, "/home/");
 			strcat(dir, user);
 		}
+		//Error if the change of the directory failed
 		if (chdir(dir) == -1) {
-			perror("chdir");
-			fprintf(stderr, "failed to change directory to %s\n", dir);
-			line_reset(&li);
+				perror("chdir");
+				fprintf(stderr, "failed to change directory to %s\n", dir);
+				line_reset(li);
 		}
 	}
 }
 
-//Handle a command line with pipes
-int handle_with_pipes(struct line *li){
-	int pipes[li->n_cmds-1][2];
-	int status;
-	int res;
-	for(int i=0;i<li->n_cmds;i++){
-		res=pipe(pipes[i]);
-	}
-	pid_t pid=fork();
-
-	if(pid==0){
-		//If redirection for input
-		if (li->redirect_input) {
-			cmd_redirection(li->file_input, 0);
-			//res == -1 redirection failed
-			if(res == -1) exit(EXIT_FAILURE);
+	//Handle a command line with pipes
+	int handle_with_pipes(struct line *li){
+		int pipes[li->n_cmds-1][2];
+		int status;
+		int res;
+		for(int i=0;i<li->n_cmds;i++){
+			res=pipe(pipes[i]);
 		}
-		//If redirection for output
-		else{
-			if(li->background){
-				cmd_redirection("/dev/null", 1);
+		pid_t pid=fork();
+
+		if(pid==0){
+			//If redirection for input
+			if (li->redirect_input) {
+				cmd_redirection(li->file_input, 0);
 				//res == -1 redirection failed
 				if(res == -1) exit(EXIT_FAILURE);
 			}
-		}
-		//Output of process to input of first pipe
-		res=dup2(pipes[0][1],1);
-		//closing pipe in child
-		res=close(pipes[0][1]);
-		res=close(pipes[0][0]);
-		res = execvp(li->cmds[0].args[0], li->cmds[0].args);
-		exit(1);
-	}
-
-	//closing pipe in child
-	res=close(pipes[0][1]);
-
-	for(int i=1;i<li->n_cmds-1;i++){
-		pid=fork();
-		if(pid==0){
-			//Output of previous pipe to input of process
-			res=dup2(pipes[i-1][0],0);
-			res=close(pipes[i-1][0]);
-			//Output of process to input of next pipe
-			res=dup2(pipes[i][1],1);
-			res=close(pipes[i][1]);
-			res=execvp(li->cmds[i].args[0], li->cmds[i].args);
+			//If redirection for output
+			else{
+				if(li->background){
+					cmd_redirection("/dev/null", 1);
+					//res == -1 redirection failed
+					if(res == -1) exit(EXIT_FAILURE);
+				}
+			}
+			//Output of process to input of first pipe
+			res=dup2(pipes[0][1],1);
+			//closing pipe in child
+			res=close(pipes[0][1]);
+			res=close(pipes[0][0]);
+			res = execvp(li->cmds[0].args[0], li->cmds[0].args);
 			exit(1);
 		}
-		//closing pipes in father
-		res=close(pipes[i-1][0]);
-		res=close(pipes[i][1]);
 
-	}
+		//closing pipe in child
+		res=close(pipes[0][1]);
 
-	pid=fork();
-	if(pid==0){
-		res=dup2(pipes[li->n_cmds-2][0],0);
+		for(int i=1;i<li->n_cmds-1;i++){
+			pid=fork();
+			if(pid==0){
+				//Output of previous pipe to input of process
+				res=dup2(pipes[i-1][0],0);
+				res=close(pipes[i-1][0]);
+				//Output of process to input of next pipe
+				res=dup2(pipes[i][1],1);
+				res=close(pipes[i][1]);
+				res=execvp(li->cmds[i].args[0], li->cmds[i].args);
+				exit(1);
+			}
+			//closing pipes in father
+			res=close(pipes[i-1][0]);
+			res=close(pipes[i][1]);
+
+		}
+
+		pid=fork();
+		if(pid==0){
+			res=dup2(pipes[li->n_cmds-2][0],0);
+			res=close(pipes[li->n_cmds-2][0]);
+			res = execvp(li->cmds[li->n_cmds-1].args[0], li->cmds[li->n_cmds-1].args);
+			exit(1);
+		}
+
+		//waiting for all commands
 		res=close(pipes[li->n_cmds-2][0]);
-		res = execvp(li->cmds[li->n_cmds-1].args[0], li->cmds[li->n_cmds-1].args);
-		exit(1);
-	}
-
-	//waiting for all commands
-	res=close(pipes[li->n_cmds-2][0]);
-	for(int i=0;i<li->n_cmds;i++){
-		res=wait(&status);
-	}
-	return status;
+		for(int i=0;i<li->n_cmds;i++){
+			res=wait(&status);
+		}
+		return status;
 }
 
-/*Exercise 3
-Execute basic commands*/
+
+//Execute basic commands
 void exeCommand(struct line *li){
 
 	//If command have'nt any arguments
@@ -288,8 +309,10 @@ void exeCommand(struct line *li){
 		fprintf(stderr,"Usage : [command] [options]\n");
 	}
 
-	//Don't execute command if command start by "exit" or "cd"
-	else if(strcmp(li->cmds[0].args[0],"exit") == 0 || strcmp(li->cmds[0].args[0],"cd") == 0);
+	//execute internal command if command start by "exit" or "cd"
+	else if(strcmp(li->cmds[0].args[0],"exit") == 0 || strcmp(li->cmds[0].args[0],"cd") == 0){
+		cmd_interne(li);
+	}
 
 	//execute command with pipes
 	else if(li->n_cmds > 1){
